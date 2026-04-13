@@ -1,0 +1,59 @@
+[scheduler]
+    allow implicit tasks = False
+
+[scheduling]
+    initial cycle point = 20260406T0600Z
+    cycling mode        = gregorian
+
+    [[graph]]
+        # Cycle 1: no dependency, start immediately
+        R1/^ = """
+            download => inference => derive_precip => plot
+        """
+        # Cycle 2: start immediately after cycle 1 plot finishes, probe for 7h
+        R1/+PT6H = """
+            download => inference => derive_precip => plot
+            plot[-PT6H] => download
+        """
+        # Cycle 3 onwards: wait 5.5h after previous plot, then probe for 2h
+        R/+PT12H/PT6H = """
+            plot[-PT6H] => wait_5h30m => download => inference => derive_precip => plot
+        """
+
+[runtime]
+    [[root]]
+        platform = aspire
+        [[[directives]]]
+            -P = 17001770
+            -j = oe
+
+    [[download]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/download.sh
+        execution retry delays = 2*PT30M
+        [[[directives]]]
+            -l select=1:ncpus=2:mem=8gb
+            -l walltime=08:00:00
+
+    [[inference]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/inference.sh
+        [[[directives]]]
+            -l select=1:ncpus=8:ngpus=1:mem=64gb
+            -l walltime=04:00:00
+
+    [[derive_precip]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/derive_precip.sh
+        [[[directives]]]
+            -l select=1:ncpus=4:mem=32gb
+            -l walltime=01:00:00
+
+    [[plot]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/plot.sh
+        [[[directives]]]
+            -l select=1:ncpus=4:mem=32gb
+            -l walltime=01:00:00
+
+    [[wait_5h30m]]
+        script = sleep 19800
+        [[[directives]]]
+            -l select=1:ncpus=1:mem=1gb
+            -l walltime=06:00:00
