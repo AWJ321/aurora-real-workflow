@@ -29,13 +29,14 @@ Every 6 hours:
     |   |-- plot.sh
     |-- start_workflow.sh          # Main entry point
     |-- fit_coefficients.csv       # Precipitation regression coefficients
+    |-- config.py                  # All paths and settings — edit this first
 
 ---
 
 ## Prerequisites
 
 - Access to ECMWF MARS API (requires .ecmwfapirc credentials file)
-- Cylc 8.5+ installed
+- Cylc 8.5+ 
 - PBS job scheduler
 - Conda/Miniforge
 
@@ -51,17 +52,19 @@ Every 6 hours:
 
 ### 2. Edit config.py
 
-Open scripts/config.py and update:
+Open config.py and update:
 
-    USER = "ang.wj"
+    USER = "your_username"
     BASE_DIR = "/data/projects/17001770/weather_department/nwp/wjang/aurora_real"
     PBS_PROJECT = "17001770"
     PLATFORM = "aspire"
 
 ### 3. Create data directories
 
+    source /app/apps/miniforge3/25.3.1/etc/profile.d/conda.sh
+    conda activate aurora_env
     python -c "
-    import sys; sys.path.insert(0, 'scripts')
+    import sys; sys.path.insert(0, '/data/projects/17001770/weather_department/nwp/wjang/aurora_real')
     import config, os
     for d in [config.RAW_SFC_DIR, config.RAW_PL_DIR, config.MERGED_DIR,
               config.FORECAST_DIR, config.PRECIP_DIR, config.PLOTS_DIR,
@@ -81,7 +84,7 @@ Open scripts/config.py and update:
 
 ### 6. Set up ECMWF API credentials
 
-Create ~/.ecmwfapirc with the following content:
+Create ~/.ecmwfapirc:
 
     {
       "url": "https://api.ecmwf.int/v1",
@@ -89,11 +92,12 @@ Create ~/.ecmwfapirc with the following content:
       "email": "YOUR_EMAIL"
     }
 
-### 7. Create conda environment
+### 7. Create conda environment and install packages
 
-    source /home/app/apps/miniforge3/24.3.0/etc/profile.d/conda.sh
+    source /app/apps/miniforge3/25.3.1/etc/profile.d/conda.sh
     conda create -n aurora_env python=3.10 -y
     conda activate aurora_env
+    pip install cylc-flow
     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
     pip install microsoft-aurora
     pip install ecmwf-api-client
@@ -101,9 +105,21 @@ Create ~/.ecmwfapirc with the following content:
     pip install metpy cartopy matplotlib imageio tqdm
     pip install huggingface_hub
 
-### 8. Update flow.cylc
+### 8. Set up Cylc platform configuration
 
-Update the PBS project code in aurora_real/flow.cylc if different from 17001770.
+Create ~/.cylc/flow/global.cylc:
+
+    mkdir -p ~/.cylc/flow
+    cat > ~/.cylc/flow/global.cylc << EOF
+    [platforms]
+        [[aspire]]
+            hosts = localhost
+            job runner = pbs
+            install target = localhost
+            cylc path = /home/users/gov/nea/YOUR_USERNAME/.conda/envs/aurora_env/bin
+    EOF
+
+Replace YOUR_USERNAME with your actual username.
 
 ---
 
@@ -114,7 +130,7 @@ Update the PBS project code in aurora_real/flow.cylc if different from 17001770.
 ### Monitor
 
     cylc tui aurora_real
-    qstat -u ang.wj
+    qstat -u your_username
 
 ### Stop
 
@@ -130,7 +146,7 @@ Update the PBS project code in aurora_real/flow.cylc if different from 17001770.
 
 ## Scheduling Logic
 
-Cycle 1  — Starts immediately, data already confirmed available
+Cycle 1  — Starts immediately, data already confirmed available by detect_start.py
 Cycle 2  — Starts immediately after Cycle 1 finishes, probes MARS every 10 min for up to 7h
 Cycle 3+ — Waits 5.5h after previous cycle finishes (tiny sleep job), then probes every 10 min for 2h
 
@@ -144,18 +160,18 @@ Animated GIF files saved to:
 
 Download to local machine:
 
-    scp ang.wj@aspire2a.nscc.sg:/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data/plots/*.gif C:\Users\7430\Desktop\
+    scp your_username@aspire2a.nscc.sg:/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data/plots/*.gif C:\Users\your_username\Desktop\
 
 ---
 
 ## PBS Resources
 
-    Task          CPUs   GPUs   RAM     Walltime
-    download       2      0      8gb     8h
-    inference      8      1     64gb     4h
-    derive_precip  4      0     32gb     1h
-    plot           4      0     32gb     1h
-    wait_5h30m     1      0      1gb     6h
+    Task          CPUs   GPUs   RAM     Walltime   Queue
+    download       2      0      8gb     8h         normal
+    inference      8      1     64gb     4h         ai
+    derive_precip  4      0     32gb     1h         normal
+    plot           4      0     32gb     1h         normal
+    wait_5h30m     1      0      1gb     6h         normal
 
 ---
 
@@ -171,3 +187,4 @@ Common issues:
 - Model checkpoint not found: re-run wget command in step 5
 - CYLC_WORKFLOW_INITIAL_CYCLE_POINT not set: fallback used, workflow still runs correctly
 - PBS queue wait times for GPU nodes can be long, forecasts may drift behind real time
+- Never run start_workflow.sh multiple times without stopping the previous run first

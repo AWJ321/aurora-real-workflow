@@ -23,9 +23,12 @@
 [runtime]
     [[root]]
         platform = aspire
+        [[[environment]]]
+            WORKFLOW_BASE_DIR = /data/projects/17001770/weather_department/nwp/wjang/aurora_real
         [[[directives]]]
             -P = 17001770
             -j = oe
+            -q = normal
 
     [[download]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/download.sh
@@ -37,6 +40,7 @@
     [[inference]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/inference.sh
         [[[directives]]]
+            -q = ai
             -l select=1:ncpus=8:ngpus=1:mem=64gb
             -l walltime=04:00:00
 

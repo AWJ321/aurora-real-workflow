@@ -13,13 +13,9 @@ import os
 USER = "ang.wj"
 
 # Base directory where all data will be stored
-# Aspire2+: /data/projects/77010001/ccrs_dwr/nwp/wjang
-# Aspire2A: /data/projects/17001770/weather_department/nwp/wjang
-BASE_DIR = "/data/projects/17001770/weather_department/nwp/wjang"
+BASE_DIR = "/data/projects/17001770/weather_department/nwp/wjang/aurora_real"
 
 # PBS project code
-# Aspire2+: 77010001
-# Aspire2A: 17001770
 PBS_PROJECT = "17001770"
 
 # Cylc platform name (check with your HPC admin if unsure)
