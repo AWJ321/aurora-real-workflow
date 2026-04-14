@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Real-time Aurora plot script.
+Saves individual PNG frames and animated GIF.
 """
 
 import os
@@ -25,9 +26,10 @@ import config
 # ==============================================================================
 # CONFIGURATION — all settings come from config.py
 # ==============================================================================
-FORECAST_DIR = config.FORECAST_DIR
-PRECIP_DIR   = config.PRECIP_DIR
-PLOTS_DIR    = config.PLOTS_DIR
+FORECAST_DIR     = config.FORECAST_DIR
+PRECIP_DIR       = config.PRECIP_DIR
+PLOTS_GIF_DIR    = config.PLOTS_GIF_DIR
+PLOTS_FRAMES_DIR = config.PLOTS_FRAMES_DIR
 # ==============================================================================
 
 DOMAIN = {
@@ -71,8 +73,6 @@ ALPHA_CONV = 0.90
 ALPHA_DIV  = 0.95
 ALPHA_TEMP = 0.98
 
-os.makedirs(PLOTS_DIR, exist_ok=True)
-
 
 def get_cycle_time():
     cycle_point = os.environ.get("CYLC_TASK_CYCLE_POINT")
@@ -83,7 +83,7 @@ def get_cycle_time():
             return dt
         except ValueError:
             print(f"WARNING: Could not parse CYLC_TASK_CYCLE_POINT='{cycle_point}'")
-    INIT_TIME = datetime(2026, 4, 7, 6)
+    INIT_TIME = datetime(2026, 4, 13, 6)
     print(f"Using manual INIT_TIME: {INIT_TIME}")
     return INIT_TIME
 
@@ -318,23 +318,25 @@ def plot_frame(d):
     fig.suptitle("Aurora Forecast — SE Asia", fontsize=13)
     plt.tight_layout(rect=[0, 0, 0.91, 1])
 
-    fig.canvas.draw()
-    frame = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
-    frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (4,))
-    frame = frame[:, :, :3]
-    plt.close(fig)
-    return frame
+    return fig
 
 
 def main():
     init_time   = get_cycle_time()
     init_str    = init_time.strftime("%Y-%m-%d_%H")
     init_dt_str = f"{init_str[:10]}T{init_str[11:13]}:00"
-    gif_path    = os.path.join(PLOTS_DIR, f"aurora_forecast_{init_str}.gif")
+    gif_path    = os.path.join(PLOTS_GIF_DIR, f"aurora_forecast_{init_str}.gif")
+
+    # Create output directories
+    os.makedirs(PLOTS_GIF_DIR, exist_ok=True)
+    frames_dir = os.path.join(PLOTS_FRAMES_DIR, init_str)
+    os.makedirs(frames_dir, exist_ok=True)
 
     print("=" * 60)
     print(" Aurora Real-Time Plot Script")
     print(f" Cycle: {init_time}")
+    print(f" GIF output   : {PLOTS_GIF_DIR}")
+    print(f" Frame output : {frames_dir}")
     print("=" * 60)
 
     if os.path.exists(gif_path):
@@ -359,12 +361,25 @@ def main():
         ds        = xr.open_dataset(fc_path)
         precip_ds = xr.open_dataset(precip_path) if os.path.exists(precip_path) else None
 
-        d = prepare(ds, precip_ds, step, init_dt_str)
+        d   = prepare(ds, precip_ds, step, init_dt_str)
+        fig = plot_frame(d)
+
         ds.close()
         if precip_ds is not None:
             precip_ds.close()
 
-        frame = plot_frame(d)
+        # Save individual PNG frame
+        png_name = f"aurora_forecast_{init_str}-lead-{step:03d}h.png"
+        png_path = os.path.join(frames_dir, png_name)
+        fig.savefig(png_path, dpi=100, bbox_inches="tight")
+        print(f"  Saved frame: {png_name}")
+
+        # Convert to numpy array for GIF
+        fig.canvas.draw()
+        frame = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+        frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (4,))
+        frame = frame[:, :, :3]
+        plt.close(fig)
         frames.append(frame)
 
     if not frames:
@@ -376,7 +391,8 @@ def main():
 
     print("\n" + "=" * 60)
     print(f" Plot complete!")
-    print(f" GIF saved to: {gif_path}")
+    print(f" GIF   : {gif_path}")
+    print(f" Frames: {frames_dir}")
     print("=" * 60)
 
 
