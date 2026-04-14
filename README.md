@@ -182,9 +182,3 @@ Check logs:
     find ~/cylc-run/aurora_real -name "job.out" | sort
     cat ~/cylc-run/aurora_real/run1/log/job/CYCLE_POINT/TASK/01/job.out
 
-Common issues:
-- Missing merged GRIB: download failed, check download log
-- Model checkpoint not found: re-run wget command in step 5
-- CYLC_WORKFLOW_INITIAL_CYCLE_POINT not set: fallback used, workflow still runs correctly
-- PBS queue wait times for GPU nodes can be long, forecasts may drift behind real time
-- Never run start_workflow.sh multiple times without stopping the previous run first
