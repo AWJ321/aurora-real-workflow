@@ -15,9 +15,15 @@
             download => inference => derive_precip => plot
             plot[-PT6H] => download
         """
-        # Cycle 3 onwards: wait 5.5h after previous plot, then probe for 2h
-        R/+PT12H/PT6H = """
-            plot[-PT6H] => wait_5h30m => download => inference => derive_precip => plot
+        # Cycle 3: start immediately after cycle 2 plot finishes, probe for 7h
+        # records data availability duration for adaptive wait
+        R1/+PT12H = """
+            download => inference => derive_precip => plot
+            plot[-PT6H] => download
+        """
+        # Cycle 4 onwards: wait adaptively after previous plot, then probe for 2h
+        R/+PT18H/PT6H = """
+            plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot
         """
 
 [runtime]
@@ -56,8 +62,8 @@
             -l select=1:ncpus=4:mem=32gb
             -l walltime=01:00:00
 
-    [[wait_5h30m]]
-        script = sleep 19800
+    [[wait_adaptive]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/wait_adaptive.sh
         [[[directives]]]
             -l select=1:ncpus=1:mem=1gb
-            -l walltime=06:00:00
+            -l walltime=10:00:00

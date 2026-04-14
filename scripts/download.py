@@ -3,8 +3,9 @@
 Real-time download script for Aurora workflow.
 Probe window logic:
   - Cycle 1: data already confirmed available by detect_start.py — no probing needed
-  - Cycle 2: probe every 10 min for up to 7 hours (next data may not be out for ~6h)
-  - Cycle 3+: sleep task already waited 5.5h — probe every 10 min for 2 hours
+  - Cycle 2: probe every 10 min for up to 7 hours
+  - Cycle 3: probe every 10 min for up to 7 hours, records how long t1 data took to appear
+  - Cycle 4+: adaptive wait task already slept, probe every 10 min for 2 hours
 """
 
 import os
@@ -14,21 +15,20 @@ import pathlib
 from datetime import datetime, timedelta
 from ecmwfapi import ECMWFService
 
-# Add repo root to path so config.py can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 # ==============================================================================
 # CONFIGURATION — all settings come from config.py
 # ==============================================================================
-BASE_DIR    = config.BASE_DIR
-RAW_SFC_DIR = config.RAW_SFC_DIR
-RAW_PL_DIR  = config.RAW_PL_DIR
-MERGED_DIR  = config.MERGED_DIR
-
+BASE_DIR             = config.BASE_DIR
+RAW_SFC_DIR          = config.RAW_SFC_DIR
+RAW_PL_DIR           = config.RAW_PL_DIR
+MERGED_DIR           = config.MERGED_DIR
 RETRY_INTERVAL_MINS  = config.RETRY_INTERVAL_MINS
 CYCLE2_TIMEOUT_HOURS = config.CYCLE2_TIMEOUT_HOURS
 STEADY_TIMEOUT_HOURS = config.STEADY_TIMEOUT_HOURS
+DURATION_FILE        = config.DURATION_FILE
 # ==============================================================================
 
 
@@ -48,7 +48,7 @@ def get_initial_cycle_point():
     if icp:
         return datetime.strptime(icp, "%Y%m%dT%H%MZ")
     print("WARNING: CYLC_WORKFLOW_INITIAL_CYCLE_POINT not set, using fallback")
-    return datetime(2026, 4, 7, 6)
+    return datetime(2026, 4, 13, 6)
 
 
 def get_cycle_time():
@@ -64,29 +64,64 @@ def get_cycle_time():
             return dt
         except ValueError:
             print(f"WARNING: Could not parse CYLC_TASK_CYCLE_POINT='{cycle_point}'")
-    INIT_TIME = datetime(2026, 4, 7, 6)
+    INIT_TIME = datetime(2026, 4, 13, 6)
     print(f"Using manual INIT_TIME: {INIT_TIME}")
     return INIT_TIME
 
 
-def get_max_wait_mins(init_time):
+def get_cycle_info(init_time):
     """
-    Cycle 1 = initial cycle point      -> attempt once (data already confirmed available)
-    Cycle 2 = initial cycle point + 6h -> probe up to 7h
-    Cycle 3+ = anything after          -> probe up to 2h (sleep task already waited 5.5h)
+    Identify which cycle this is and return appropriate probe window.
+
+    Cycle 1 = initial cycle point       -> attempt once (data already confirmed)
+    Cycle 2 = initial cycle point + 6h  -> probe up to 7h
+    Cycle 3 = initial cycle point + 12h -> probe up to 7h, record t1 duration
+    Cycle 4+ = anything after           -> probe up to 2h (adaptive wait already done)
+
+    Returns (max_wait_mins, is_cycle3)
     """
     initial_cp = get_initial_cycle_point()
     cycle2_cp  = initial_cp + timedelta(hours=6)
+    cycle3_cp  = initial_cp + timedelta(hours=12)
 
     if init_time == initial_cp:
         print(f"  Cycle 1 — data already confirmed available, attempting once")
-        return 0
+        return 0, False
     elif init_time == cycle2_cp:
         print(f"  Cycle 2 — probing up to {CYCLE2_TIMEOUT_HOURS}h for new data")
-        return CYCLE2_TIMEOUT_HOURS * 60
+        return CYCLE2_TIMEOUT_HOURS * 60, False
+    elif init_time == cycle3_cp:
+        print(f"  Cycle 3 — probing up to {CYCLE2_TIMEOUT_HOURS}h, will record t1 data availability duration")
+        return CYCLE2_TIMEOUT_HOURS * 60, True
     else:
-        print(f"  Cycle 3+ — sleep task already waited 5.5h, probing up to {STEADY_TIMEOUT_HOURS}h")
-        return STEADY_TIMEOUT_HOURS * 60
+        print(f"  Cycle 4+ — adaptive wait already done, probing up to {STEADY_TIMEOUT_HOURS}h")
+        return STEADY_TIMEOUT_HOURS * 60, False
+
+
+def save_duration(probe_start_time, data_found_time):
+    """
+    Save the measured t1 data availability duration to a file.
+    This is read by wait_adaptive.sh to determine how long to sleep for cycle 4+.
+    Duration is measured from when we first tried to download t1 to when it succeeded.
+    """
+    duration_secs           = int((data_found_time - probe_start_time).total_seconds())
+    duration_hrs            = duration_secs // 3600
+    duration_mins_remainder = (duration_secs % 3600) // 60
+    sleep_secs              = max(0, duration_secs - 1800)
+    sleep_hrs               = sleep_secs // 3600
+    sleep_mins_remainder    = (sleep_secs % 3600) // 60
+
+    with open(DURATION_FILE, "w") as f:
+        f.write(f"{duration_secs}\n")
+
+    print(f"\n  {'='*55}")
+    print(f"  DATA AVAILABILITY DURATION (Cycle 3 measurement)")
+    print(f"  Probing t1 started : {probe_start_time.strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"  t1 data found at   : {data_found_time.strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"  Duration           : {duration_hrs}h {duration_mins_remainder}m ({duration_secs}s)")
+    print(f"  Cycle 4+ will sleep: {sleep_hrs}h {sleep_mins_remainder}m (duration - 30 min)")
+    print(f"  Saved to           : {DURATION_FILE}")
+    print(f"  {'='*55}\n")
 
 
 def timestamp_str(dt):
@@ -132,11 +167,13 @@ def try_download_pl(server, dt, pl_file):
 
 
 def download_with_retry(server, dt, max_wait_mins):
-    ts       = timestamp_str(dt)
-    sfc_file = os.path.join(RAW_SFC_DIR, f"aurora_sfc_{ts}.grib")
-    pl_file  = os.path.join(RAW_PL_DIR,  f"aurora_pl_{ts}.grib")
-
-    # Cycle 1: max_wait_mins=0, attempt exactly once
+    """
+    Download SFC and PL data for a given timestep with retry logic.
+    Returns (sfc_file, pl_file).
+    """
+    ts          = timestamp_str(dt)
+    sfc_file    = os.path.join(RAW_SFC_DIR, f"aurora_sfc_{ts}.grib")
+    pl_file     = os.path.join(RAW_PL_DIR,  f"aurora_pl_{ts}.grib")
     max_retries = max(1, int(max_wait_mins // RETRY_INTERVAL_MINS))
 
     # --- SFC ---
@@ -184,6 +221,55 @@ def download_with_retry(server, dt, max_wait_mins):
     return sfc_file, pl_file
 
 
+def main():
+    init_time                = get_cycle_time()
+    t0_time                  = init_time - timedelta(hours=6)
+    t1_time                  = init_time
+    max_wait_mins, is_cycle3 = get_cycle_info(init_time)
+
+    print("=" * 60)
+    print(" Aurora Real-Time Download Script")
+    print(f" Forecast init time : {init_time}")
+    print(f" Downloading        : {t0_time} and {t1_time}")
+    print(f" Max wait           : {max_wait_mins:.0f} mins")
+    print(f" Record duration    : {is_cycle3}")
+    print("=" * 60)
+
+    setup_dirs()
+    server = ECMWFService("mars")
+
+    # --- Download t0 first (always old data, downloads instantly) ---
+    print(f"\n--- Timestep: {timestamp_str(t0_time)} ---")
+    sfc_file, pl_file = download_with_retry(server, t0_time, max_wait_mins)
+    merge_timestep(sfc_file, pl_file, t0_time)
+
+    # --- Download t1 (newest data, may need probing) ---
+    print(f"\n--- Timestep: {timestamp_str(t1_time)} ---")
+
+    # Start timer just before probing t1 — this is what we want to measure
+    if is_cycle3:
+        t1_probe_start = datetime.utcnow()
+        print(f"  [CYCLE 3] Timer started: {t1_probe_start.strftime('%Y-%m-%d %H:%M UTC')}")
+
+    sfc_file, pl_file = download_with_retry(server, t1_time, max_wait_mins)
+
+    # Stop timer and save duration
+    if is_cycle3:
+        t1_data_found = datetime.utcnow()
+        save_duration(t1_probe_start, t1_data_found)
+
+    merge_timestep(sfc_file, pl_file, t1_time)
+
+    print("\n" + "=" * 60)
+    print(" Download complete!")
+    for dt in [t0_time, t1_time]:
+        ts = timestamp_str(dt)
+        f  = os.path.join(MERGED_DIR, f"aurora_merged_{ts}.grib")
+        if os.path.exists(f):
+            print(f"  ✓ aurora_merged_{ts}.grib ({os.path.getsize(f)/(1024**2):.1f} MB)")
+    print("=" * 60)
+
+
 def merge_timestep(sfc_file, pl_file, dt):
     ts          = timestamp_str(dt)
     merged_file = os.path.join(MERGED_DIR, f"aurora_merged_{ts}.grib")
@@ -201,37 +287,6 @@ def merge_timestep(sfc_file, pl_file, dt):
     size_mb = os.path.getsize(merged_file) / (1024 ** 2)
     print(f"  [DONE] Merged: {os.path.basename(merged_file)} ({size_mb:.1f} MB)")
     return merged_file
-
-
-def main():
-    init_time     = get_cycle_time()
-    t0_time       = init_time - timedelta(hours=6)
-    t1_time       = init_time
-    max_wait_mins = get_max_wait_mins(init_time)
-
-    print("=" * 60)
-    print(" Aurora Real-Time Download Script")
-    print(f" Forecast init time : {init_time}")
-    print(f" Downloading        : {t0_time} and {t1_time}")
-    print(f" Max wait           : {max_wait_mins:.0f} mins")
-    print("=" * 60)
-
-    setup_dirs()
-    server = ECMWFService("mars")
-
-    for dt in [t0_time, t1_time]:
-        print(f"\n--- Timestep: {timestamp_str(dt)} ---")
-        sfc_file, pl_file = download_with_retry(server, dt, max_wait_mins)
-        merge_timestep(sfc_file, pl_file, dt)
-
-    print("\n" + "=" * 60)
-    print(" Download complete!")
-    for dt in [t0_time, t1_time]:
-        ts = timestamp_str(dt)
-        f  = os.path.join(MERGED_DIR, f"aurora_merged_{ts}.grib")
-        if os.path.exists(f):
-            print(f"  ✓ aurora_merged_{ts}.grib ({os.path.getsize(f)/(1024**2):.1f} MB)")
-    print("=" * 60)
 
 
 if __name__ == "__main__":
