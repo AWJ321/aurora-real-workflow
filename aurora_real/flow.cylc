@@ -35,32 +35,32 @@
         script = bash ${WORKFLOW_BASE_DIR}/bash/download.sh
         execution retry delays = 2*PT30M
         [[[directives]]]
-            -l select=1:ncpus=2:mem=8gb
+            -l select=1:ncpus=1:mem=8gb
             -l walltime=08:00:00
 
     [[inference]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/inference.sh
         [[[directives]]]
             -q = ai
-            -l select=1:ncpus=8:ngpus=1:mem=64gb
+            -l select=1:ncpus=1:ngpus=1:mem=64gb
             -l walltime=04:00:00
 
     [[derive_precip]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/derive_precip.sh
         [[[directives]]]
-            -l select=1:ncpus=4:mem=32gb
+            -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
 
     [[plot]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/plot.sh
         [[[directives]]]
-            -l select=1:ncpus=4:mem=32gb
+            -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
 
     [[plot_comparison]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/plot_comparison.sh
         [[[directives]]]
-            -l select=1:ncpus=4:mem=32gb
+            -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
 
     [[wait_adaptive]]
