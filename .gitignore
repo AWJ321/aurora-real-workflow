@@ -21,3 +21,5 @@ __pycache__/
 
 # Cylc run directory
 cylc-run/
+*.png
+data/
