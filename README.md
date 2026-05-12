@@ -6,7 +6,8 @@ Every 6 hours:
 1. Downloads latest ECMWF atmospheric data from MARS
 2. Runs Aurora AI model for 7-day forecast
 3. Derives precipitation using regression parameterisation
-4. Generates animated GIF of SE Asia weather forecast
+4. Generates animated GIF and individual PNG frames of SE Asia weather forecast
+5. Generates side-by-side Aurora vs AIFS comparison plots
 
 ---
 
@@ -21,12 +22,15 @@ Every 6 hours:
     |   |-- download.py            # Downloads ECMWF MARS data
     |   |-- inference.py           # Runs Aurora model inference
     |   |-- derive_precip.py       # Derives precipitation from forecast
-    |   |-- plot.py                # Generates forecast GIF animation
+    |   |-- plot.py                # Generates forecast GIF and PNG frames
+    |   |-- plot_comparison.py     # Generates Aurora vs AIFS comparison plots
     |-- bash/
     |   |-- download.sh
     |   |-- inference.sh
     |   |-- derive_precip.sh
     |   |-- plot.sh
+    |   |-- plot_comparison.sh
+    |   |-- wait_adaptive.sh
     |-- start_workflow.sh          # Main entry point
     |-- fit_coefficients.csv       # Precipitation regression coefficients
     |-- config.py                  # All paths and settings — edit this first
@@ -36,7 +40,7 @@ Every 6 hours:
 ## Prerequisites
 
 - Access to ECMWF MARS API (requires .ecmwfapirc credentials file)
-- Cylc 8.5+ 
+- Cylc 8.5+
 - PBS job scheduler
 - Conda/Miniforge
 
@@ -68,6 +72,7 @@ Open config.py and update:
     import config, os
     for d in [config.RAW_SFC_DIR, config.RAW_PL_DIR, config.MERGED_DIR,
               config.FORECAST_DIR, config.PRECIP_DIR, config.PLOTS_DIR,
+              config.PLOTS_GIF_DIR, config.PLOTS_FRAMES_DIR,
               config.LOG_DIR, os.path.dirname(config.MODEL_CKPT),
               os.path.dirname(config.COEFF_CSV)]:
         os.makedirs(d, exist_ok=True)
@@ -104,6 +109,7 @@ Create ~/.ecmwfapirc:
     pip install xarray cfgrib netCDF4 scipy numpy pandas
     pip install metpy cartopy matplotlib imageio tqdm
     pip install huggingface_hub
+    pip install Pillow
 
 ### 8. Set up Cylc platform configuration
 
@@ -136,42 +142,81 @@ Replace YOUR_USERNAME with your actual username.
 
     cylc stop --kill aurora_real
 
-### Clean and restart
+---
 
-    cylc stop --kill aurora_real
-    cylc clean aurora_real --yes
-    bash start_workflow.sh
+## After System Maintenance / Server Restart
+
+The workflow does not restart automatically after maintenance. To restart manually:
+
+### 1. Restart the workflow
+
+    conda activate aurora_env
+    bash /data/projects/17001770/weather_department/nwp/wjang/aurora_real/start_workflow.sh
+
+start_workflow.sh automatically:
+- Finds the last completed cycle from data/plots/gif/
+- Starts from that cycle + 6h to catch up all missed cycles
+- Runs missed cycles back to back with no waiting
+- Resumes normal operation once caught up to latest available data
+
+### 2. Monitor catch-up progress
+
+    cylc tui aurora_real
+
+### 3. Verify catch-up completed
+
+    cat /data/projects/17001770/weather_department/nwp/wjang/aurora_real/caught_up.txt
+
+This file is written when the workflow reaches the latest available data.
+Once it exists, normal scheduling resumes.
 
 ---
 
 ## Scheduling Logic
 
-Cycle 1  — Starts immediately, data already confirmed available by detect_start.py
-Cycle 2  — Starts immediately after Cycle 1 finishes, probes MARS every 10 min for up to 7h
-Cycle 3+ — Waits 5.5h after previous cycle finishes (tiny sleep job), then probes every 10 min for 2h
+Catch-up cycles — if missed cycles exist, runs all back to back immediately with no waiting
+New Cycle 1   — latest available data, downloads immediately
+New Cycle 2   — starts immediately after Cycle 1, probes MARS every 10 min for up to 7h
+New Cycle 3   — starts immediately after Cycle 2, probes every 10 min for up to 7h, records data availability duration
+New Cycle 4+  — waits (measured duration - 30 min), then probes every 10 min for 2h
+
+Data availability duration measured in Cycle 3 is saved to data_availability_duration.txt
+If file already exists it is not overwritten — preserved across restarts
 
 ---
 
 ## Output
 
-Animated GIF files saved to:
+    data/plots/
+    |-- gif/
+    |   |-- aurora_forecast_YYYY-MM-DD_HH.gif
+    |-- frames/
+    |   |-- YYYY-MM-DD_HH/
+    |       |-- aurora_forecast_YYYY-MM-DD_HH-lead-006h.png
+    |       |-- ... (28 files)
+    data/comparison/
+    |-- gif/
+    |   |-- comparison_YYYY-MM-DD_HH.gif
+    |-- frames/
+        |-- YYYY-MM-DD_HH/
+            |-- comparison_YYYY-MM-DD_HH-lead-006h.png
+            |-- ... (28 files)
 
-    {BASE_DIR}/data/plots/aurora_forecast_YYYY-MM-DD_HH.gif
+Download GIFs to local machine:
 
-Download to local machine:
-
-    scp your_username@aspire2a.nscc.sg:/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data/plots/*.gif C:\Users\your_username\Desktop\
+    scp your_username@aspire2a.nscc.sg:/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data/plots/gif/*.gif C:\Users\your_username\Desktop\
 
 ---
 
 ## PBS Resources
 
-    Task          CPUs   GPUs   RAM     Walltime   Queue
-    download       2      0      8gb     8h         normal
-    inference      8      1     64gb     4h         ai
-    derive_precip  4      0     32gb     1h         normal
-    plot           4      0     32gb     1h         normal
-    wait_5h30m     1      0      1gb     6h         normal
+    Task             CPUs   GPUs   RAM     Walltime   Queue
+    download          1      0      8gb     8h         normal
+    inference         1      1     64gb     4h         ai
+    derive_precip     1      0     32gb     1h         normal
+    plot              1      0     32gb     1h         normal
+    plot_comparison   1      0     32gb     1h         normal
+    wait_adaptive     1      0      1gb     10h        normal
 
 ---
 
@@ -182,3 +227,10 @@ Check logs:
     find ~/cylc-run/aurora_real -name "job.out" | sort
     cat ~/cylc-run/aurora_real/run1/log/job/CYCLE_POINT/TASK/01/job.out
 
+Common issues:
+- Missing merged GRIB: download failed, check download log
+- Model checkpoint not found: re-run wget command in step 5
+- CYLC_WORKFLOW_INITIAL_CYCLE_POINT not set: fallback used, workflow still runs correctly
+- PBS queue wait times for GPU nodes can be long, forecasts may drift behind real time
+- Never run start_workflow.sh multiple times without stopping the previous run first
+- If caught_up.txt exists from a previous run, start_workflow.sh deletes it automatically
