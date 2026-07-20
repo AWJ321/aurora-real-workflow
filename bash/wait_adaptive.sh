@@ -9,6 +9,7 @@
 
 DURATION_FILE="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data_availability_duration.txt"
 CAUGHT_UP_FILE="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/caught_up.txt"
+SCRIPTS_DIR="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/scripts"
 LEEWAY_SECS=1800
 
 echo "=============================="
@@ -17,6 +18,10 @@ echo " Host: $(hostname)"
 echo " Time: $(date -u)"
 echo " Cycle point: $CYLC_TASK_CYCLE_POINT"
 echo "=============================="
+
+source /app/apps/miniforge3/25.3.1/etc/profile.d/conda.sh
+conda activate aurora_env
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
 
 # Check if still catching up — if so skip sleep entirely
 if [ ! -f "$CAUGHT_UP_FILE" ]; then
@@ -53,10 +58,35 @@ if [ "$DIFF" -lt 64800 ]; then
     exit 0
 fi
 
-# Normal operation — new Cycle 4+, sleep based on measured duration
+# Check if data for this cycle is already available
+echo ""
+echo " Checking if data already available for $CYLC_TASK_CYCLE_POINT ..."
+LATEST_AVAILABLE=$(python $SCRIPTS_DIR/detect_start.py 2>/dev/null)
+
+if [ -n "$LATEST_AVAILABLE" ]; then
+    echo " Latest available: $LATEST_AVAILABLE"
+    LATEST_DATE="${LATEST_AVAILABLE:0:4}-${LATEST_AVAILABLE:4:2}-${LATEST_AVAILABLE:6:2}"
+    LATEST_HOUR="${LATEST_AVAILABLE:9:2}"
+    LATEST_EPOCH=$(date -u -d "${LATEST_DATE}T${LATEST_HOUR}:00:00Z" +%s)
+
+    if [ "$CYCLE_EPOCH" -le "$LATEST_EPOCH" ]; then
+        echo " Data already available — skipping sleep"
+        echo ""
+        echo "=============================="
+        echo " Aurora Adaptive Wait Finished"
+        echo " Time: $(date -u)"
+        echo "=============================="
+        exit 0
+    fi
+    echo " Data not yet available — sleeping normally"
+else
+    echo " Could not determine latest available — sleeping normally"
+fi
+
+# Normal operation — sleep based on measured duration
 if [ ! -f "$DURATION_FILE" ]; then
-    echo "WARNING: Duration file not found, falling back to 5.5h sleep"
-    SLEEP_SECS=19800
+    echo "WARNING: Duration file not found, falling back to 4.5h sleep"
+    SLEEP_SECS=14400
 else
     DURATION_SECS=$(cat "$DURATION_FILE" | head -1 | tr -d '[:space:]')
     SLEEP_SECS=$((DURATION_SECS - LEEWAY_SECS))
@@ -71,11 +101,10 @@ else
     SLEEP_MINS=$(( (SLEEP_SECS % 3600) / 60 ))
 
     echo ""
-    echo " New Cycle 4+ — normal adaptive wait"
-    echo " Data availability duration (from cycle 3): ${DURATION_HRS}h ${DURATION_MINS}m"
-    echo " Sleeping for                             : ${SLEEP_HRS}h ${SLEEP_MINS}m (duration - 30 min)"
+    echo " Data availability duration : ${DURATION_HRS}h ${DURATION_MINS}m"
+    echo " Sleeping for               : ${SLEEP_HRS}h ${SLEEP_MINS}m (duration - 30 min)"
     WAKE_TIME=$(date -u -d "+${SLEEP_SECS} seconds" "+%Y-%m-%d %H:%M UTC" 2>/dev/null)
-    echo " Will start probing at                    : $WAKE_TIME"
+    echo " Will start probing at      : $WAKE_TIME"
     echo ""
 fi
 

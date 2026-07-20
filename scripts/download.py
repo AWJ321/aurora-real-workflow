@@ -142,9 +142,9 @@ def get_cycle_info(init_time):
 
 
 def save_duration(probe_start_time, data_found_time):
-    # If duration file already exists, keep existing value
-    if os.path.exists(DURATION_FILE):
-        print(f"  Duration file already exists — keeping existing value, not overwriting")
+    # Only save if caught_up.txt exists — meaning this is a real cycle 3, not catch-up
+    if not os.path.exists(CAUGHT_UP_FILE):
+        print(f"  No caught_up.txt — catch-up cycle 3, not recording duration")
         return
 
     duration_secs           = int((data_found_time - probe_start_time).total_seconds())

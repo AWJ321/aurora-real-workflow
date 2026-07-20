@@ -2,24 +2,22 @@
 *.grib
 *.nc
 *.gif
+*.png
 *.parquet
-
 # Model checkpoint
 *.ckpt
-
 # Logs
 logs/
 *.log
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
-
 # Jupyter notebooks
 *.ipynb
-
 # Cylc run directory
 cylc-run/
-*.png
+# Data directories
 data/
+caught_up.txt
+data_availability_duration.txt

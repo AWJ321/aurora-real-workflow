@@ -7,18 +7,18 @@
 
     [[graph]]
         R1/^ = """
-            download => inference => derive_precip => plot => plot_comparison
+            download => inference => derive_precip => plot => plot_comparison => transfer
         """
         R1/+PT6H = """
-            download => inference => derive_precip => plot => plot_comparison
+            download => inference => derive_precip => plot => plot_comparison => transfer
             plot[-PT6H] => download
         """
         R1/+PT12H = """
-            download => inference => derive_precip => plot => plot_comparison
+            download => inference => derive_precip => plot => plot_comparison => transfer
             plot[-PT6H] => download
         """
         R/+PT18H/PT6H = """
-            plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot => plot_comparison
+            plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot => plot_comparison => transfer
         """
 
 [runtime]
@@ -33,13 +33,14 @@
 
     [[download]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/download.sh
-        execution retry delays = 2*PT30M
+        execution retry delays = 10*PT30M
         [[[directives]]]
             -l select=1:ncpus=1:mem=8gb
             -l walltime=08:00:00
 
     [[inference]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/inference.sh
+        execution retry delays = 10*PT30M
         [[[directives]]]
             -q = ai
             -l select=1:ncpus=1:ngpus=1:mem=64gb
@@ -47,21 +48,31 @@
 
     [[derive_precip]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/derive_precip.sh
+        execution retry delays = 10*PT30M
         [[[directives]]]
             -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
 
     [[plot]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/plot.sh
+        execution retry delays = 10*PT30M
         [[[directives]]]
             -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
 
     [[plot_comparison]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/plot_comparison.sh
+        execution retry delays = 10*PT30M
         [[[directives]]]
             -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
+
+    [[transfer]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/transfer.sh
+        execution retry delays = 10*PT30M
+        [[[directives]]]
+            -l select=1:ncpus=1:mem=4gb
+            -l walltime=00:30:00
 
     [[wait_adaptive]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/wait_adaptive.sh
