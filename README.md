@@ -8,6 +8,7 @@ Every 6 hours:
 3. Derives precipitation using regression parameterisation
 4. Generates animated GIF and individual PNG frames of SE Asia weather forecast
 5. Generates side-by-side Aurora vs AIFS comparison plots
+6. Transfers outputs to remote server
 
 ---
 
@@ -31,6 +32,7 @@ Every 6 hours:
     |   |-- plot.sh
     |   |-- plot_comparison.sh
     |   |-- wait_adaptive.sh
+    |   |-- transfer.sh
     |-- start_workflow.sh          # Main entry point
     |-- fit_coefficients.csv       # Precipitation regression coefficients
     |-- config.py                  # All paths and settings — edit this first
@@ -127,6 +129,11 @@ Create ~/.cylc/flow/global.cylc:
 
 Replace YOUR_USERNAME with your actual username.
 
+### 9. Set up SSH key for remote transfer
+
+    ssh-keygen -t rsa -b 4096
+    ssh-copy-id aramanathan@118.189.84.226
+
 ---
 
 ## Running the Workflow
@@ -178,10 +185,10 @@ Catch-up cycles — if missed cycles exist, runs all back to back immediately wi
 New Cycle 1   — latest available data, downloads immediately
 New Cycle 2   — starts immediately after Cycle 1, probes MARS every 10 min for up to 7h
 New Cycle 3   — starts immediately after Cycle 2, probes every 10 min for up to 7h, records data availability duration
-New Cycle 4+  — waits (measured duration - 30 min), then probes every 10 min for 2h
+New Cycle 4+  — wait_adaptive checks if data already available, skips sleep if so; otherwise sleeps (measured duration - 30 min), then probes every 10 min for up to 4h
 
-Data availability duration measured in Cycle 3 is saved to data_availability_duration.txt
-If file already exists it is not overwritten — preserved across restarts
+Data availability duration is measured dynamically in new Cycle 3 and saved to data_availability_duration.txt
+Only written if caught_up.txt exists — ensures catch-up cycles never corrupt the measurement
 
 ---
 
@@ -210,13 +217,14 @@ Download GIFs to local machine:
 
 ## PBS Resources
 
-    Task             CPUs   GPUs   RAM     Walltime   Queue
-    download          1      0      8gb     8h         normal
-    inference         1      1     64gb     4h         ai
-    derive_precip     1      0     32gb     1h         normal
-    plot              1      0     32gb     1h         normal
-    plot_comparison   1      0     32gb     1h         normal
-    wait_adaptive     1      0      1gb     10h        normal
+    Task             CPUs   GPUs   RAM     Walltime   Queue   Retries
+    download          1      0      8gb     8h         normal  10
+    inference         1      1     64gb     4h         ai      10
+    derive_precip     1      0     32gb     1h         normal  10
+    plot              1      0     32gb     1h         normal  10
+    plot_comparison   1      0     32gb     1h         normal  10
+    transfer          1      0      4gb     30min      normal  10
+    wait_adaptive     1      0      1gb     10h        normal  —
 
 ---
 
@@ -234,3 +242,5 @@ Common issues:
 - PBS queue wait times for GPU nodes can be long, forecasts may drift behind real time
 - Never run start_workflow.sh multiple times without stopping the previous run first
 - If caught_up.txt exists from a previous run, start_workflow.sh deletes it automatically
+- ECMWF API token expires periodically — update ~/.ecmwfapirc with new key when downloads fail with authentication error
+- SSH key for transfer needs to be re-added after Aspire2A maintenance: ssh-copy-id aramanathan@118.189.84.226
