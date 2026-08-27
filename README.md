@@ -5,7 +5,7 @@ Real-time AI weather forecasting pipeline running on HPC cluster using Cylc 8 an
 Every 6 hours:
 1. Downloads latest ECMWF atmospheric data from MARS
 2. Runs Aurora AI model for 7-day forecast
-3. Derives precipitation using regression parameterisation
+3. Derives precipitation using MLP regression parameterisation
 4. Generates animated GIF and individual PNG frames of SE Asia weather forecast
 5. Generates side-by-side Aurora vs AIFS comparison plots
 6. Transfers outputs to remote server
@@ -22,7 +22,7 @@ Every 6 hours:
     |   |-- detect_start.py        # Detects latest available ECMWF cycle
     |   |-- download.py            # Downloads ECMWF MARS data
     |   |-- inference.py           # Runs Aurora model inference
-    |   |-- derive_precip.py       # Derives precipitation from forecast
+    |   |-- derive_precip.py       # Derives precipitation using MLP
     |   |-- plot.py                # Generates forecast GIF and PNG frames
     |   |-- plot_comparison.py     # Generates Aurora vs AIFS comparison plots
     |-- bash/
@@ -34,7 +34,6 @@ Every 6 hours:
     |   |-- wait_adaptive.sh
     |   |-- transfer.sh
     |-- start_workflow.sh          # Main entry point
-    |-- fit_coefficients.csv       # Precipitation regression coefficients
     |-- config.py                  # All paths and settings — edit this first
 
 ---
@@ -76,18 +75,25 @@ Open config.py and update:
               config.FORECAST_DIR, config.PRECIP_DIR, config.PLOTS_DIR,
               config.PLOTS_GIF_DIR, config.PLOTS_FRAMES_DIR,
               config.LOG_DIR, os.path.dirname(config.MODEL_CKPT),
-              os.path.dirname(config.COEFF_CSV)]:
+              config.MLP_MODEL_DIR]:
         os.makedirs(d, exist_ok=True)
         print(f'Created: {d}')
     "
 
-### 4. Copy fit_coefficients.csv to config directory
-
-    cp fit_coefficients.csv /data/projects/17001770/weather_department/nwp/wjang/aurora_real/config/
-
-### 5. Download Aurora model checkpoint (~4.5GB)
+### 4. Download Aurora model checkpoint (~4.5GB)
 
     wget -O /data/projects/17001770/weather_department/nwp/wjang/aurora_real/model/aurora-0.1-finetuned.ckpt https://huggingface.co/microsoft/aurora/resolve/main/aurora-0.1-finetuned.ckpt
+
+### 5. Copy MLP precipitation model files
+
+Copy the following files to model/mlp/:
+
+    mlp_model_NE.pt
+    mlp_model_SW.pt
+    mlp_model_IM.pt
+    mlp_scaler_NE.pkl
+    mlp_scaler_SW.pkl
+    mlp_scaler_IM.pkl
 
 ### 6. Set up ECMWF API credentials
 
@@ -174,9 +180,6 @@ start_workflow.sh automatically:
 
     cat /data/projects/17001770/weather_department/nwp/wjang/aurora_real/caught_up.txt
 
-This file is written when the workflow reaches the latest available data.
-Once it exists, normal scheduling resumes.
-
 ---
 
 ## Scheduling Logic
@@ -209,10 +212,6 @@ Only written if caught_up.txt exists — ensures catch-up cycles never corrupt t
             |-- comparison_YYYY-MM-DD_HH-lead-006h.png
             |-- ... (28 files)
 
-Download GIFs to local machine:
-
-    scp your_username@aspire2a.nscc.sg:/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data/plots/gif/*.gif C:\Users\your_username\Desktop\
-
 ---
 
 ## PBS Resources
@@ -237,10 +236,12 @@ Check logs:
 
 Common issues:
 - Missing merged GRIB: download failed, check download log
-- Model checkpoint not found: re-run wget command in step 5
+- Model checkpoint not found: re-run wget command in step 4
+- MLP model files not found: copy mlp_model_*.pt and mlp_scaler_*.pkl to model/mlp/
 - CYLC_WORKFLOW_INITIAL_CYCLE_POINT not set: fallback used, workflow still runs correctly
 - PBS queue wait times for GPU nodes can be long, forecasts may drift behind real time
 - Never run start_workflow.sh multiple times without stopping the previous run first
 - If caught_up.txt exists from a previous run, start_workflow.sh deletes it automatically
 - ECMWF API token expires periodically — update ~/.ecmwfapirc with new key when downloads fail with authentication error
+- MARS queue can be very slow during peak periods — download jobs will retry automatically
 - SSH key for transfer needs to be re-added after Aspire2A maintenance: ssh-copy-id aramanathan@118.189.84.226

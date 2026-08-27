@@ -18,7 +18,6 @@ COMPARISON_GIF_DIR    = os.path.join(COMPARISON_DIR, "gif")
 COMPARISON_FRAMES_DIR = os.path.join(COMPARISON_DIR, "frames")
 
 MODEL_CKPT = "/data/projects/17001770/weather_department/nwp/wjang/aurora_real/model/aurora-0.1-finetuned.ckpt"
-COEFF_CSV  = "/data/projects/17001770/weather_department/nwp/wjang/aurora_real/fit_coefficients.csv"
 
 LOG_DIR        = os.path.join(BASE_DIR, "logs")
 DURATION_FILE  = os.path.join(BASE_DIR, "data_availability_duration.txt")
@@ -31,3 +30,4 @@ CYCLE2_TIMEOUT_HOURS = 7
 STEADY_TIMEOUT_HOURS = 4
 FORECAST_HOURS = 168
 STEP_HOURS     = 6
+MLP_MODEL_DIR  = os.path.join(os.path.dirname(MODEL_CKPT), "mlp")
