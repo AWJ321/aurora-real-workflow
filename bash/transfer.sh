@@ -29,6 +29,14 @@ rsync -av $LOCAL_BASE/plots/gif/aurora_forecast_${INIT_STR}.gif \
 rsync -av $LOCAL_BASE/plots/frames/${INIT_STR}/ \
     $REMOTE:$REMOTE_BASE/plots/frames/${INIT_STR}/ 2>/dev/null || echo "No frames found for $INIT_STR"
 
+rsync -av $LOCAL_BASE/plots_precip/gif/aurora_precip_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_precip/gif/ 2>/dev/null || echo "No precip GIF found for $INIT_STR"
+rsync -av $LOCAL_BASE/plots_precip/frames/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_precip/frames/${INIT_STR}/ 2>/dev/null || echo "No precip frames found for $INIT_STR"
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind925hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind850hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind700hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/925hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/925hPa/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/850hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/850hPa/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/700hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/700hPa/${INIT_STR}/ 2>/dev/null || true
 rsync -av $LOCAL_BASE/comparison/gif/comparison_${INIT_STR}.gif \
     $REMOTE:$REMOTE_BASE/comparison/gif/ 2>/dev/null || echo "No comparison GIF found for $INIT_STR"
 

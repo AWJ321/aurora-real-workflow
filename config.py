@@ -13,6 +13,12 @@ PRECIP_DIR   = os.path.join(BASE_DIR, "data", "precip")
 PLOTS_DIR        = os.path.join(BASE_DIR, "data", "plots")
 PLOTS_GIF_DIR    = os.path.join(PLOTS_DIR, "gif")
 PLOTS_FRAMES_DIR = os.path.join(PLOTS_DIR, "frames")
+
+# New plot output directories
+PLOTS_PRECIP_GIF_DIR    = os.path.join(BASE_DIR, "data", "plots_precip", "gif")
+PLOTS_PRECIP_FRAMES_DIR = os.path.join(BASE_DIR, "data", "plots_precip", "frames")
+PLOTS_WIND_GIF_DIR      = os.path.join(BASE_DIR, "data", "plots_wind", "gif")
+PLOTS_WIND_FRAMES_DIR   = os.path.join(BASE_DIR, "data", "plots_wind", "frames")
 COMPARISON_DIR        = os.path.join(BASE_DIR, "data", "comparison")
 COMPARISON_GIF_DIR    = os.path.join(COMPARISON_DIR, "gif")
 COMPARISON_FRAMES_DIR = os.path.join(COMPARISON_DIR, "frames")

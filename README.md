@@ -7,8 +7,10 @@ Every 6 hours:
 2. Runs Aurora AI model for 7-day forecast
 3. Derives precipitation using MLP regression parameterisation
 4. Generates animated GIF and individual PNG frames of SE Asia weather forecast
-5. Generates side-by-side Aurora vs AIFS comparison plots
-6. Transfers outputs to remote server
+5. Generates precipitation plots with log colorscale
+6. Generates wind speed and barb plots at 925/850/700hPa
+7. Generates side-by-side Aurora vs AIFS comparison plots
+8. Transfers outputs to remote server
 
 ---
 
@@ -24,12 +26,16 @@ Every 6 hours:
     |   |-- inference.py           # Runs Aurora model inference
     |   |-- derive_precip.py       # Derives precipitation using MLP
     |   |-- plot.py                # Generates forecast GIF and PNG frames
+    |   |-- plot_precip.py         # Generates precipitation log-colorscale plots
+    |   |-- plot_wind.py           # Generates wind speed and barb plots (925/850/700hPa)
     |   |-- plot_comparison.py     # Generates Aurora vs AIFS comparison plots
     |-- bash/
     |   |-- download.sh
     |   |-- inference.sh
     |   |-- derive_precip.sh
     |   |-- plot.sh
+    |   |-- plot_precip.sh
+    |   |-- plot_wind.sh
     |   |-- plot_comparison.sh
     |   |-- wait_adaptive.sh
     |   |-- transfer.sh
@@ -204,6 +210,22 @@ Only written if caught_up.txt exists — ensures catch-up cycles never corrupt t
     |   |-- YYYY-MM-DD_HH/
     |       |-- aurora_forecast_YYYY-MM-DD_HH-lead-006h.png
     |       |-- ... (28 files)
+    data/plots_precip/
+    |-- gif/
+    |   |-- aurora_precip_YYYY-MM-DD_HH.gif
+    |-- frames/
+    |   |-- YYYY-MM-DD_HH/
+    |       |-- aurora_precip_YYYY-MM-DD_HH-lead-006h.png
+    |       |-- ... (28 files)
+    data/plots_wind/
+    |-- gif/
+    |   |-- aurora_wind925hPa_YYYY-MM-DD_HH.gif
+    |   |-- aurora_wind850hPa_YYYY-MM-DD_HH.gif
+    |   |-- aurora_wind700hPa_YYYY-MM-DD_HH.gif
+    |-- frames/
+    |   |-- 925hPa/YYYY-MM-DD_HH/ (28 files)
+    |   |-- 850hPa/YYYY-MM-DD_HH/ (28 files)
+    |   |-- 700hPa/YYYY-MM-DD_HH/ (28 files)
     data/comparison/
     |-- gif/
     |   |-- comparison_YYYY-MM-DD_HH.gif
@@ -221,6 +243,8 @@ Only written if caught_up.txt exists — ensures catch-up cycles never corrupt t
     inference         1      1     64gb     4h         ai      10
     derive_precip     1      0     32gb     1h         normal  10
     plot              1      0     32gb     1h         normal  10
+    plot_precip       1      0     32gb     1h         normal  10
+    plot_wind         1      0     32gb     2h         normal  10
     plot_comparison   1      0     32gb     1h         normal  10
     transfer          1      0      4gb     30min      normal  10
     wait_adaptive     1      0      1gb     10h        normal  —

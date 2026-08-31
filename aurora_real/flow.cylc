@@ -8,17 +8,25 @@
     [[graph]]
         R1/^ = """
             download => inference => derive_precip => plot => plot_comparison => transfer
+            inference => plot_wind => transfer
+            derive_precip => plot_precip => transfer
         """
         R1/+PT6H = """
             download => inference => derive_precip => plot => plot_comparison => transfer
+            inference => plot_wind => transfer
+            derive_precip => plot_precip => transfer
             plot[-PT6H] => download
         """
         R1/+PT12H = """
             download => inference => derive_precip => plot => plot_comparison => transfer
+            inference => plot_wind => transfer
+            derive_precip => plot_precip => transfer
             plot[-PT6H] => download
         """
         R/+PT18H/PT6H = """
             plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot => plot_comparison => transfer
+            inference => plot_wind => transfer
+            derive_precip => plot_precip => transfer
         """
 
 [runtime]
@@ -59,6 +67,20 @@
         [[[directives]]]
             -l select=1:ncpus=1:mem=32gb
             -l walltime=01:00:00
+
+    [[plot_precip]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/plot_precip.sh
+        execution retry delays = 10*PT30M
+        [[[directives]]]
+            -l select=1:ncpus=1:mem=32gb
+            -l walltime=01:00:00
+
+    [[plot_wind]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/plot_wind.sh
+        execution retry delays = 10*PT30M
+        [[[directives]]]
+            -l select=1:ncpus=1:mem=32gb
+            -l walltime=02:00:00
 
     [[plot_comparison]]
         script = bash ${WORKFLOW_BASE_DIR}/bash/plot_comparison.sh
