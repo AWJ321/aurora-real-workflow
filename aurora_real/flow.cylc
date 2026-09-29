@@ -7,33 +7,33 @@
 
     [[graph]]
         R1/^ = """
-            download => inference => derive_precip => plot => plot_comparison => transfer
-            inference => plot_wind => transfer
-            derive_precip => plot_precip => transfer
+            download => inference => derive_precip => plot => plot_comparison => plot_recent => transfer
+            inference => plot_wind => plot_recent
+            derive_precip => plot_precip => plot_recent
         """
         R1/+PT6H = """
-            download => inference => derive_precip => plot => plot_comparison => transfer
-            inference => plot_wind => transfer
-            derive_precip => plot_precip => transfer
+            download => inference => derive_precip => plot => plot_comparison => plot_recent => transfer
+            inference => plot_wind => plot_recent
+            derive_precip => plot_precip => plot_recent
             plot[-PT6H] => download
         """
         R1/+PT12H = """
-            download => inference => derive_precip => plot => plot_comparison => transfer
-            inference => plot_wind => transfer
-            derive_precip => plot_precip => transfer
+            download => inference => derive_precip => plot => plot_comparison => plot_recent => transfer
+            inference => plot_wind => plot_recent
+            derive_precip => plot_precip => plot_recent
             plot[-PT6H] => download
         """
         R/+PT18H/PT6H = """
-            plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot => plot_comparison => transfer
-            inference => plot_wind => transfer
-            derive_precip => plot_precip => transfer
+            plot[-PT6H] => wait_adaptive => download => inference => derive_precip => plot => plot_comparison => plot_recent => transfer
+            inference => plot_wind => plot_recent
+            derive_precip => plot_precip => plot_recent
         """
 
 [runtime]
     [[root]]
         platform = aspire
         [[[environment]]]
-            WORKFLOW_BASE_DIR = /data/projects/17001770/weather_department/nwp/wjang/aurora_real
+            WORKFLOW_BASE_DIR = /home/users/gov/nea/ang.wj/scratch/aurora_real
         [[[directives]]]
             -P = 17001770
             -j = oe
@@ -87,6 +87,13 @@
         execution retry delays = 10*PT30M
         [[[directives]]]
             -l select=1:ncpus=1:mem=32gb
+            -l walltime=01:00:00
+
+    [[plot_recent]]
+        script = bash ${WORKFLOW_BASE_DIR}/bash/plot_recent.sh
+        execution retry delays = 10*PT30M
+        [[[directives]]]
+            -l select=1:ncpus=1:mem=16gb
             -l walltime=01:00:00
 
     [[transfer]]

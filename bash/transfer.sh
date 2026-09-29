@@ -5,11 +5,11 @@
 #PBS -l walltime=00:30:00
 #PBS -j oe
 #PBS -q normal
-#PBS -o /data/projects/17001770/weather_department/nwp/wjang/aurora_real/logs/transfer.log
+#PBS -o /home/users/gov/nea/ang.wj/scratch/aurora_real/logs/transfer.log
 
 REMOTE="aramanathan@118.189.84.226"
 REMOTE_BASE="/nas44/aramanathan/AI-NWP/RealTime/aurora"
-LOCAL_BASE="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data"
+LOCAL_BASE="/home/users/gov/nea/ang.wj/scratch/aurora_real/data"
 
 CYCLE_POINT=$CYLC_TASK_CYCLE_POINT
 CYCLE_DATE="${CYCLE_POINT:0:4}-${CYCLE_POINT:4:2}-${CYCLE_POINT:6:2}"
@@ -23,69 +23,64 @@ echo " Time: $(date)"
 echo " Cycle: $INIT_STR"
 echo "=============================="
 
+# Main forecast plots
 rsync -av $LOCAL_BASE/plots/gif/aurora_forecast_${INIT_STR}.gif \
     $REMOTE:$REMOTE_BASE/plots/gif/ 2>/dev/null || echo "No GIF found for $INIT_STR"
-
 rsync -av $LOCAL_BASE/plots/frames/${INIT_STR}/ \
     $REMOTE:$REMOTE_BASE/plots/frames/${INIT_STR}/ 2>/dev/null || echo "No frames found for $INIT_STR"
 
-rsync -av $LOCAL_BASE/plots_precip/gif/aurora_precip_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_precip/gif/ 2>/dev/null || echo "No precip GIF found for $INIT_STR"
-rsync -av $LOCAL_BASE/plots_precip/frames/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_precip/frames/${INIT_STR}/ 2>/dev/null || echo "No precip frames found for $INIT_STR"
-rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind925hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
-rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind850hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
-rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind700hPa_${INIT_STR}.gif     $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
-rsync -av $LOCAL_BASE/plots_wind/frames/925hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/925hPa/${INIT_STR}/ 2>/dev/null || true
-rsync -av $LOCAL_BASE/plots_wind/frames/850hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/850hPa/${INIT_STR}/ 2>/dev/null || true
-rsync -av $LOCAL_BASE/plots_wind/frames/700hPa/${INIT_STR}/     $REMOTE:$REMOTE_BASE/plots_wind/frames/700hPa/${INIT_STR}/ 2>/dev/null || true
+# Precip plots
+rsync -av $LOCAL_BASE/plots_precip/gif/aurora_precip_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/plots_precip/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_precip/frames/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/plots_precip/frames/${INIT_STR}/ 2>/dev/null || true
+
+# Wind plots
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind925hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind850hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/gif/aurora_wind700hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/plots_wind/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/925hPa/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/plots_wind/frames/925hPa/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/850hPa/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/plots_wind/frames/850hPa/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/plots_wind/frames/700hPa/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/plots_wind/frames/700hPa/${INIT_STR}/ 2>/dev/null || true
+
+# Comparison (main)
 rsync -av $LOCAL_BASE/comparison/gif/comparison_${INIT_STR}.gif \
-    $REMOTE:$REMOTE_BASE/comparison/gif/ 2>/dev/null || echo "No comparison GIF found for $INIT_STR"
-
+    $REMOTE:$REMOTE_BASE/comparison/gif/ 2>/dev/null || true
 rsync -av $LOCAL_BASE/comparison/frames/${INIT_STR}/ \
-    $REMOTE:$REMOTE_BASE/comparison/frames/${INIT_STR}/ 2>/dev/null || echo "No comparison frames found for $INIT_STR"
+    $REMOTE:$REMOTE_BASE/comparison/frames/${INIT_STR}/ 2>/dev/null || true
 
-# --- Copy latest comparison frames to /recent, renamed as 01.png, 02.png, ... ---
-echo "Copying latest comparison frames to recent/..."
-RECENT_DEST="$REMOTE_BASE/comparison/recent"
+# Comparison panels — precip
+rsync -av $LOCAL_BASE/comparison/precip/gif/comparison_precip_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/comparison/precip/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/precip/frames/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/comparison/precip/frames/${INIT_STR}/ 2>/dev/null || true
 
-LATEST_FOLDER=$(ssh $REMOTE "ls -d $REMOTE_BASE/comparison/frames/????-??-??_?? 2>/dev/null | sort | tail -1")
+# Comparison panels — wind
+rsync -av $LOCAL_BASE/comparison/wind_925/gif/comparison_wind925hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/comparison/wind_925/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/wind_925/frames/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/comparison/wind_925/frames/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/wind_850/gif/comparison_wind850hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/comparison/wind_850/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/wind_850/frames/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/comparison/wind_850/frames/${INIT_STR}/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/wind_700/gif/comparison_wind700hPa_${INIT_STR}.gif \
+    $REMOTE:$REMOTE_BASE/comparison/wind_700/gif/ 2>/dev/null || true
+rsync -av $LOCAL_BASE/comparison/wind_700/frames/${INIT_STR}/ \
+    $REMOTE:$REMOTE_BASE/comparison/wind_700/frames/${INIT_STR}/ 2>/dev/null || true
 
-if [ -z "$LATEST_FOLDER" ]; then
-    echo "No comparison frame folders found on remote — skipping recent copy"
-else
-    echo "Latest folder: $LATEST_FOLDER"
-    ssh $REMOTE "
-        mkdir -p $RECENT_DEST
-
-        # Clear out any stale files from previous runs
-        rm -f $RECENT_DEST/*.png $RECENT_DEST/*.gif
-
-        counter=1
-        for f in \$(ls $LATEST_FOLDER/comparison_*-lead-*.png 2>/dev/null | sort); do
-            [ -f \"\$f\" ] || continue
-            newname=\$(printf '%02d.png' \$counter)
-            cp \"\$f\" \"$RECENT_DEST/\$newname\"
-            counter=\$((counter + 1))
-        done
-        echo \"Done copying \$(ls $RECENT_DEST/*.png 2>/dev/null | wc -l) frame files to $RECENT_DEST\"
-    "
-fi
-
-# --- Copy latest comparison GIF to /recent, renamed as animation.gif ---
-LATEST_GIF=$(ssh $REMOTE "ls $REMOTE_BASE/comparison/gif/comparison_*.gif 2>/dev/null | sort | tail -1")
-
-if [ -z "$LATEST_GIF" ]; then
-    echo "No comparison GIF found on remote — skipping"
-else
-    echo "Latest GIF: $LATEST_GIF"
-    ssh $REMOTE "
-        cp \"$LATEST_GIF\" \"$RECENT_DEST/animation.gif\"
-
-        # Fix permissions so files are readable by others (e.g. web server)
-        chmod -R o+r $RECENT_DEST
-        chmod o+rx $RECENT_DEST
-    "
-    echo "Copied as animation.gif and fixed permissions"
-fi
+# Recent — clear remote and rsync fresh
+echo "Updating recent/..."
+ssh $REMOTE "rm -rf $REMOTE_BASE/comparison/recent && mkdir -p $REMOTE_BASE/comparison/recent"
+rsync -av $LOCAL_BASE/comparison/recent/ \
+    $REMOTE:$REMOTE_BASE/comparison/recent/ 2>/dev/null || echo "No recent files to transfer"
+ssh $REMOTE "chmod -R o+r $REMOTE_BASE/comparison/recent && chmod o+rx $REMOTE_BASE/comparison/recent"
 
 echo "=============================="
 echo " Aurora Transfer Finished"
