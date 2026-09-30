@@ -32,7 +32,7 @@ PLOT_TYPES = {
         "gif_dir":           config.COMPARISON_PRECIP_GIF_DIR,
         "frames_dir":        config.COMPARISON_PRECIP_FRAMES_DIR,
         "gif_prefix":        "comparison_precip",
-        "recent_tag":        "rain",
+        "recent_tag":        "",
     },
     "wind_925": {
         "aurora_frames_dir": os.path.join(config.PLOTS_WIND_FRAMES_DIR, "925hPa"),
@@ -151,7 +151,8 @@ def main():
                 gif_frames.append(np.array(combined))
 
             # Always update recent
-            recent_png = os.path.join(RECENT_DIR, f"{frame_num:02d}_{cfg['recent_tag']}.png")
+            tag = cfg['recent_tag']
+            recent_png = os.path.join(RECENT_DIR, f"{frame_num:02d}{'_' + tag if tag else ''}.png")
             combined.save(recent_png)
             recent_frames.append(np.array(combined))
 
@@ -163,7 +164,7 @@ def main():
 
         # Save recent GIF (always overwrite)
         if recent_frames:
-            recent_gif = os.path.join(RECENT_DIR, f"animation_{cfg['recent_tag']}.gif")
+            recent_gif = os.path.join(RECENT_DIR, f"animation{'_' + tag if tag else ''}.gif")
             imageio.mimsave(recent_gif, recent_frames, fps=2, loop=0)
             print(f"  Saved recent GIF: animation_{cfg['recent_tag']}.gif ({len(recent_frames)} frames)")
 
