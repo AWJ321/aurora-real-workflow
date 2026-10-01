@@ -42,6 +42,8 @@ Every 6 hours:
     |   |-- plot_recent.sh
     |   |-- wait_adaptive.sh
     |   |-- transfer.sh
+    |-- model/
+    |   |-- mlp/                   # MLP precipitation model files
     |-- start_workflow.sh          # Main entry point
     |-- config.py                  # All paths and settings — edit this first
 
@@ -93,16 +95,9 @@ Open config.py and update:
 
     wget -O /data/projects/17001770/weather_department/nwp/wjang/aurora_real/model/aurora-0.1-finetuned.ckpt https://huggingface.co/microsoft/aurora/resolve/main/aurora-0.1-finetuned.ckpt
 
-### 5. Copy MLP precipitation model files
+### 5. MLP precipitation model files
 
-Copy the following files to model/mlp/:
-
-    mlp_model_NE.pt
-    mlp_model_SW.pt
-    mlp_model_IM.pt
-    mlp_scaler_NE.pkl
-    mlp_scaler_SW.pkl
-    mlp_scaler_IM.pkl
+The MLP model files are included in the repository and will be available at `model/mlp/` after cloning
 
 ### 6. Set up ECMWF API credentials
 

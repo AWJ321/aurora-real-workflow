@@ -46,7 +46,7 @@ def get_latest_available():
     try:
         result = subprocess.run(
             ["python", os.path.join(SCRIPTS_DIR, "detect_start.py")],
-            capture_output=True, text=True, timeout=120
+            capture_output=True, text=True, timeout=900
         )
         cp = result.stdout.strip()
         if cp:

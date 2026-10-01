@@ -2,7 +2,7 @@
 #PBS -N aurora_download
 #PBS -P 17001770
 #PBS -l select=1:ncpus=2:mem=8gb
-#PBS -l walltime=08:00:00
+#PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -o /data/projects/17001770/weather_department/nwp/wjang/aurora_real/logs/download.log
 

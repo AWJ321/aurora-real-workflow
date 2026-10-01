@@ -48,7 +48,6 @@ def get_latest_cycle():
                             "time":    dt.strftime("%H%M"),
                             "step":    "0",
                             "grid":    "1.0/1.0",
-                            "area":    "10/100/0/110",
                             "expver":  "1",
                         }, tmp)
 
