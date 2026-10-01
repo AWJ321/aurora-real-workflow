@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from datetime import datetime
+from datetime import datetime, timedelta
 from scipy.ndimage import gaussian_filter
 import imageio
 import warnings
@@ -84,7 +84,9 @@ def plot_frame(init_str, step):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 8),
                            subplot_kw={"projection": ccrs.PlateCarree()})
-    base(ax, f"Aurora Precip | Init {init_str} UTC | Lead +{step}h")
+    valid_dt  = datetime.strptime(init_str, "%Y-%m-%d_%H") + timedelta(hours=step)
+    valid_str = valid_dt.strftime("%Y-%m-%d %HZ")
+    base(ax, f"Aurora Precip | Init {init_str} UTC | Lead +{step}h | Valid {valid_str}")
 
     rain_plot = np.ma.masked_less(rain, 0)
     cf = ax.contourf(
