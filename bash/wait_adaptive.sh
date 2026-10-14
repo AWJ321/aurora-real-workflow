@@ -5,11 +5,11 @@
 #PBS -l walltime=10:00:00
 #PBS -j oe
 #PBS -q normal
-#PBS -o /data/projects/17001770/weather_department/nwp/wjang/aurora_real/logs/wait_adaptive.log
+#PBS -o /home/users/gov/nea/ang.wj/scratch/aurora_real/logs/wait_adaptive.log
 
-DURATION_FILE="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/data_availability_duration.txt"
-CAUGHT_UP_FILE="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/caught_up.txt"
-SCRIPTS_DIR="/data/projects/17001770/weather_department/nwp/wjang/aurora_real/scripts"
+DURATION_FILE="/home/users/gov/nea/ang.wj/scratch/aurora_real/data_availability_duration.txt"
+CAUGHT_UP_FILE="/home/users/gov/nea/ang.wj/scratch/aurora_real/caught_up.txt"
+SCRIPTS_DIR="/home/users/gov/nea/ang.wj/scratch/aurora_real/scripts"
 LEEWAY_SECS=1800
 
 echo "=============================="
@@ -61,7 +61,7 @@ fi
 # Check if data for this cycle is already available
 echo ""
 echo " Checking if data already available for $CYLC_TASK_CYCLE_POINT ..."
-LATEST_AVAILABLE=$(python $SCRIPTS_DIR/detect_start.py 2>/dev/null)
+LATEST_AVAILABLE=$(timeout 1200 python $SCRIPTS_DIR/detect_start.py 2>/dev/null)
 
 if [ -n "$LATEST_AVAILABLE" ]; then
     echo " Latest available: $LATEST_AVAILABLE"
