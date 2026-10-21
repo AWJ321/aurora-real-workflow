@@ -263,7 +263,7 @@ Only written if caught_up.txt exists — ensures catch-up cycles never corrupt t
 ## PBS Resources
 
     Task             CPUs   GPUs   RAM     Walltime   Queue   Retries
-    download          1      0      8gb     8h         normal  10
+    download          1      0      8gb     24h         normal  10
     inference         1      1     64gb     4h         ai      10
     derive_precip     1      0     32gb     1h         normal  10
     plot              1      0     32gb     1h         normal  10
@@ -272,7 +272,7 @@ Only written if caught_up.txt exists — ensures catch-up cycles never corrupt t
     plot_comparison   1      0     32gb     1h         normal  10
     plot_recent       1      0     16gb     1h         normal  10
     transfer          1      0      4gb     30min      normal  10
-    wait_adaptive     1      0      1gb     10h        normal  —
+    wait_adaptive     1      0      1gb     14h        normal  —
 
 ---
 
